@@ -2,8 +2,7 @@
 #  RestSoapApi — .gitignore
 # ──────────────────────────────────────────────
 
-# Secrets — NEVER commit real .env
-.env
+# dist .env kept separate (not tracked)
 dist/.env
 
 # Python bytecode
