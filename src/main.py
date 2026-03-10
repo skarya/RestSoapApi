@@ -13,6 +13,7 @@ Examples:
 import argparse
 import os
 import sys
+import json
 from datetime import datetime
 
 # ── Path fix for PyInstaller ──────────────────────────────────────────────────
@@ -54,6 +55,37 @@ def _output_path(input_files: list) -> str:
     return os.path.join(output_dir, f"report_{base_name}_{timestamp}.xlsx")
 
 
+def _get_failures_file_path() -> str:
+    """Get path to the last_failures.json file."""
+    if hasattr(sys, "_MEIPASS"):
+        output_dir = os.path.join(os.path.dirname(sys.executable), "data", "output")
+    else:
+        output_dir = os.path.join(_root_dir, "data", "output")
+    os.makedirs(output_dir, exist_ok=True)
+    return os.path.join(output_dir, "last_failures.json")
+
+
+def _save_failures(all_test_cases: list, results: list):
+    """Save raw test case definitions for those that failed/errored."""
+    failed_ids = {r["testcaseid"] for r in results if r.get("pass_fail") in ["FAIL", "ERROR"]}
+    if not failed_ids:
+        # Clear failures file if everything passed
+        path = _get_failures_file_path()
+        if os.path.exists(path):
+            os.remove(path)
+        return
+
+    failed_definitions = [tc for tc in all_test_cases if tc.get("testcaseid") in failed_ids]
+    
+    path = _get_failures_file_path()
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(failed_definitions, f, indent=4)
+        print(f"  💾 Saved {len(failed_definitions)} failed test cases to {os.path.basename(path)}")
+    except Exception as e:
+        print(f"  [WARN] Failed to save failures file: {e}")
+
+
 def _print_summary_table(results: list):
     """Print a clean ASCII summary table to the console."""
     print("\n" + "─" * 70)
@@ -84,13 +116,19 @@ def main():
     )
     parser.add_argument(
         "input_files",
-        nargs="+",
+        nargs="*",
         help=(
             "One or more paths to input files.\n"
             "  Must contain '_REST' or '_SOAP' in the filename.\n"
             "  Supported formats: .json, .xlsx, .xls\n"
             "  Example: file1_REST.json file2_SOAP.xlsx"
         ),
+    )
+    parser.add_argument(
+        "--rerun-failed", "--failed",
+        action="store_true",
+        default=False,
+        help="Re-run only the test cases that failed or errored in the previous run.",
     )
     parser.add_argument(
         "--parallel",
@@ -106,23 +144,42 @@ def main():
 
     all_test_cases = []
     
-    print(f"  Mode        : {mode_label}")
-    print(f"  Input Files : {len(input_files)}")
-    print()
-
-    # ── Process each file ────────────────────────────────────────────────────
-    for input_file in input_files:
-        if not os.path.isfile(input_file):
-            print(f"❌ ERROR: Input file not found: {input_file}")
-            continue
-
+    if args.rerun_failed:
+        failures_path = _get_failures_file_path()
+        if not os.path.isfile(failures_path):
+            print(f"⚠️  No previous failures found at: {failures_path}")
+            sys.exit(0)
+        
         try:
-            metadata = detect(input_file)
-            print(f"  Parsing '{os.path.basename(input_file)}' ({metadata['api_type']})...")
-            test_cases = parse_file(input_file, metadata["api_type"])
-            all_test_cases.extend(test_cases)
+            with open(failures_path, "r", encoding="utf-8") as f:
+                all_test_cases = json.load(f)
+            print(f"  🔄 Rerunning {len(all_test_cases)} failed test cases from previous session...")
         except Exception as e:
-            print(f"❌ ERROR processing '{input_file}': {e}")
+            print(f"❌ ERROR loading failures file: {e}")
+            sys.exit(1)
+    else:
+        input_files = [os.path.abspath(f) for f in args.input_files or []]
+        if not input_files:
+            print("❌ ERROR: No input files provided.")
+            parser.print_help()
+            sys.exit(1)
+
+        print(f"  Input Files : {len(input_files)}")
+        print()
+
+        # ── Process each file ────────────────────────────────────────────────────
+        for input_file in input_files:
+            if not os.path.isfile(input_file):
+                print(f"❌ ERROR: Input file not found: {input_file}")
+                continue
+
+            try:
+                metadata = detect(input_file)
+                print(f"  Parsing '{os.path.basename(input_file)}' ({metadata['api_type']})...")
+                test_cases = parse_file(input_file, metadata["api_type"])
+                all_test_cases.extend(test_cases)
+            except Exception as e:
+                print(f"❌ ERROR processing '{input_file}': {e}")
 
     if not all_test_cases:
         print("⚠️  No test cases found in any input file. Exiting.")
@@ -147,13 +204,16 @@ def main():
     print(f"\n  Results : {passed} PASSED  |  {failed} FAILED  |  {errors} ERRORS  |  Total: {total}")
     print(f"  Duration: {duration:.2f}s\n")
 
+    # ── Save failures for potential re-run ─────────────────────────────────────
+    _save_failures(all_test_cases, results)
+
     # ── Generate report ───────────────────────────────────────────────────────
     output_path = _output_path(input_files)
     print("  Generating Consolidated Excel report...")
     try:
         saved_path = generate_report(
             results    = results,
-            input_file = input_files[0] if len(input_files) == 1 else "Consolidated_Suites",
+            input_file = "Rerun_Failures" if args.rerun_failed else (input_files[0] if len(input_files) == 1 else "Consolidated_Suites"),
             mode       = mode_label,
             output_path= output_path,
             start_time = start_time,
