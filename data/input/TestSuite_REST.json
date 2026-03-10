@@ -1,0 +1,52 @@
+[
+  {
+    "TestCaseID": "TC_REST_001",
+    "Description": "Get a single post by ID",
+    "Method": "GET",
+    "Endpoint": "{{API_BASE_URL}}/posts/1",
+    "Headers": "{\"Accept\": \"application/json\"}",
+    "Payload": "",
+    "SOAPAction": "",
+    "ExpectedStatus": "200"
+  },
+  {
+    "TestCaseID": "TC_REST_002",
+    "Description": "Create a new post (inline payload)",
+    "Method": "POST",
+    "Endpoint": "{{API_BASE_URL}}/posts",
+    "Headers": "{\"Content-Type\": \"application/json\", \"Authorization\": \"Bearer {{AUTH_TOKEN}}\"}",
+    "Payload": "{\"title\": \"Hello World\", \"body\": \"This is a test post.\", \"userId\": 1}",
+    "SOAPAction": "",
+    "ExpectedStatus": "201"
+  },
+  {
+    "TestCaseID": "TC_REST_003",
+    "Description": "Create a post using external payload file",
+    "Method": "POST",
+    "Endpoint": "{{API_BASE_URL}}/posts",
+    "Headers": "{\"Content-Type\": \"application/json\"}",
+    "Payload": "file:create_post.json",
+    "SOAPAction": "",
+    "ExpectedStatus": "201"
+  },
+  {
+    "TestCaseID": "TC_REST_004",
+    "Description": "Update an existing post (external payload)",
+    "Method": "PUT",
+    "Endpoint": "{{API_BASE_URL}}/posts/1",
+    "Headers": "{\"Content-Type\": \"application/json\"}",
+    "Payload": "file:update_post.json",
+    "SOAPAction": "",
+    "ExpectedStatus": "200"
+  },
+  {
+    "TestCaseID": "TC_REST_005",
+    "Description": "Get all comments for a post",
+    "Method": "GET",
+    "Endpoint": "{{API_BASE_URL}}/posts/1/comments",
+    "Headers": "{\"Accept\": \"application/json\"}",
+    "Payload": "",
+    "SOAPAction": "",
+    "ExpectedStatus": "200"
+  }
+]

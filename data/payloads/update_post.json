@@ -1,0 +1,6 @@
+{
+    "id": 1,
+    "title": "Updated Post Title via External Payload",
+    "body": "This is an updated post body. Stored in data/payloads/update_post.json for easy editing.",
+    "userId": 1
+}

@@ -1,0 +1,36 @@
+# ──────────────────────────────────────────────
+#  RestSoapApi — .gitignore
+# ──────────────────────────────────────────────
+
+# Secrets — NEVER commit real .env
+.env
+dist/.env
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# PyInstaller build output (binary artefacts — not source)
+build/
+dist/
+
+# Generated Excel output reports
+data/output/
+
+# Auto-generated Excel input files (regenerate with generate_excel_inputs.py)
+data/input/*.xlsx
+data/input/*.xls
+
+# IDE / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

@@ -1,0 +1,32 @@
+[
+    {
+        "TestCaseID": "TC_SOAP_001",
+        "Description": "SOAP Calculator - Add two numbers (5 + 3)",
+        "Method": "POST",
+        "Endpoint": "https://www.dneonline.com/calculator.asmx",
+        "Headers": "",
+        "Payload": "file:soap_add.xml",
+        "SOAPAction": "http://tempuri.org/Add",
+        "ExpectedStatus": "200"
+    },
+    {
+        "TestCaseID": "TC_SOAP_002",
+        "Description": "SOAP Calculator - Multiply two numbers (6 x 7)",
+        "Method": "POST",
+        "Endpoint": "https://www.dneonline.com/calculator.asmx",
+        "Headers": "",
+        "Payload": "file:soap_multiply.xml",
+        "SOAPAction": "http://tempuri.org/Multiply",
+        "ExpectedStatus": "200"
+    },
+    {
+        "TestCaseID": "TC_SOAP_003",
+        "Description": "SOAP Calculator - Subtract two numbers (10 - 4)",
+        "Method": "POST",
+        "Endpoint": "https://www.dneonline.com/calculator.asmx",
+        "Headers": "",
+        "Payload": "file:soap_subtract.xml",
+        "SOAPAction": "http://tempuri.org/Subtract",
+        "ExpectedStatus": "200"
+    }
+]
