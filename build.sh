@@ -63,5 +63,5 @@ echo
 echo "Usage:"
 echo "  ./dist/ApiAutomation data/input/TestSuite_REST.json"
 echo "  ./dist/ApiAutomation data/input/TestSuite_SOAP.json --parallel"
-echo "  ./dist/ApiAutomation data/input/TestSuite_REST.json data/input/TestSuite_SOAP.json"
+echo "  ./dist/ApiAutomation --rerun-failed"
 echo

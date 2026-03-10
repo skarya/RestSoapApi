@@ -37,6 +37,7 @@ echo ============================================
 echo.
 echo Usage:
 echo   dist\ApiAutomation.exe data\input\TestSuite_REST.json
-echo   dist\ApiAutomation.exe data\input\TestSuite_SOAP.xlsx --parallel
+echo   dist\ApiAutomation.exe data\input\TestSuite_SOAP.json --parallel
+echo   dist\ApiAutomation.exe --rerun-failed
 echo.
 pause
