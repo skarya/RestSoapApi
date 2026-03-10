@@ -6,13 +6,15 @@ A Python-based API test automation framework that supports both **REST** and **S
 
 ## ✨ Features
 
-- ✅ **REST & SOAP** test execution in a single run
-- ✅ **Serial & Parallel** execution modes
-- ✅ **Excel and JSON** input test suite formats
+- 🚀 **REST & SOAP** support in a single framework.
+- 📁 **JSON/Excel** input formats for test suites.
+- 🎨 **Impactful Excel Reports** with Pie Charts and Dashboards.
+- Concurrency: Run tests in **Serial** or **Parallel** mode.
+- 🔄 **Smart Re-run**: Execute only previously failed test cases to save time.
+- 📦 **Standalone Executable**: Build `.exe` for Windows or binaries for macOS.
 - ✅ **Dynamic payloads** from external `.json` / `.xml` files
 - ✅ **Environment variable injection** via `.env` (e.g. `{{AUTH_TOKEN}}`)
 - ✅ **Consolidated Excel report** with conditional formatting
-- ✅ **Standalone Windows EXE** via PyInstaller
 
 ---
 
@@ -83,19 +85,16 @@ python generate_excel_inputs.py
 
 ## ▶️ Usage
 
-### Run REST test suite
+### Running Tests
 ```bash
+# Run a single suite
 python src/main.py data/input/TestSuite_REST.json
-```
 
-### Run SOAP test suite in parallel mode
-```bash
-python src/main.py data/input/TestSuite_SOAP.xlsx --parallel
-```
+# Run multiple suites in parallel
+python src/main.py data/input/TestSuite_REST.json data/input/TestSuite_SOAP.json --parallel
 
-### Run both suites together (consolidated report)
-```bash
-python src/main.py data/input/TestSuite_REST.json data/input/TestSuite_SOAP.json
+# Re-run ONLY failed/errored cases from the previous session
+python src/main.py --rerun-failed
 ```
 
 Output report is saved to `data/output/report_<name>_<timestamp>.xlsx`.
