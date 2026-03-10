@@ -1,32 +1,32 @@
 [
     {
         "TestCaseID": "TC_SOAP_001",
-        "Description": "SOAP Calculator - Add two numbers (5 + 3)",
+        "Description": "SOAP CountryInfo - Get Capital of USA (Washington)",
         "Method": "POST",
-        "Endpoint": "https://www.dneonline.com/calculator.asmx",
+        "Endpoint": "{{SOAP_BASE_URL}}",
         "Headers": "",
-        "Payload": "file:soap_add.xml",
-        "SOAPAction": "http://tempuri.org/Add",
+        "Payload": "file:soap_country_capital.xml",
+        "SOAPAction": "",
         "ExpectedStatus": "200"
     },
     {
         "TestCaseID": "TC_SOAP_002",
-        "Description": "SOAP Calculator - Multiply two numbers (6 x 7)",
+        "Description": "SOAP CountryInfo - Get Currency of India (Rupees)",
         "Method": "POST",
-        "Endpoint": "https://www.dneonline.com/calculator.asmx",
+        "Endpoint": "{{SOAP_BASE_URL}}",
         "Headers": "",
-        "Payload": "file:soap_multiply.xml",
-        "SOAPAction": "http://tempuri.org/Multiply",
+        "Payload": "file:soap_country_currency.xml",
+        "SOAPAction": "",
         "ExpectedStatus": "200"
     },
     {
         "TestCaseID": "TC_SOAP_003",
-        "Description": "SOAP Calculator - Subtract two numbers (10 - 4)",
+        "Description": "SOAP CountryInfo - Get Language Name (hi -> Hindi)",
         "Method": "POST",
-        "Endpoint": "https://www.dneonline.com/calculator.asmx",
+        "Endpoint": "{{SOAP_BASE_URL}}",
         "Headers": "",
-        "Payload": "file:soap_subtract.xml",
-        "SOAPAction": "http://tempuri.org/Subtract",
+        "Payload": "file:soap_country_language.xml",
+        "SOAPAction": "",
         "ExpectedStatus": "200"
     }
 ]

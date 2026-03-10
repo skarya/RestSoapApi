@@ -13,6 +13,8 @@ from openpyxl.styles import (
     Font, PatternFill, Alignment, Border, Side, GradientFill
 )
 from openpyxl.utils import get_column_letter
+from openpyxl.chart import PieChart, Reference
+from openpyxl.chart.label import DataLabelList
 
 # ── Colour palette ────────────────────────────────────────────────────────────
 C_NAVY        = "1F2D3D"
@@ -110,17 +112,17 @@ def _write_summary_sheet(ws, results: list, input_file: str, mode: str,
     duration = (end_time - start_time).total_seconds()
 
     # ── Title banner ──
-    ws.merge_cells("B2:J3")
+    ws.merge_cells("B2:R3")
     cell = ws["B2"]
     cell.value     = "🚀  API TEST EXECUTION REPORT"
-    cell.font      = Font(name="Calibri", bold=True, size=22, color=C_TITLE_GOLD)
+    cell.font      = Font(name="Calibri", bold=True, size=24, color=C_TITLE_GOLD)
     cell.fill      = _fill(C_NAVY)
     cell.alignment = _align("center", "center")
     _set_row_height(ws, 2, 45)
     _set_row_height(ws, 3, 45)
 
     # ── Subtitle / metadata row ──
-    ws.merge_cells("B4:J4")
+    ws.merge_cells("B4:R4")
     meta = ws["B4"]
     meta.value = (
         f"Input: {os.path.basename(input_file)}   |   "
@@ -189,6 +191,106 @@ def _write_summary_sheet(ws, results: list, input_file: str, mode: str,
     ws["H13"].font      = _font(bold=True, size=14)
     ws["H13"].alignment = _align("center", "center")
     _set_row_height(ws, 13, 28)
+
+    # ── Environment Metadata (row 15–16) ──
+    ws.merge_cells("B15:C15")
+    ws["B15"].value = "REST Base URL:"
+    ws["B15"].font = _font(bold=True, size=9, color="777777")
+    ws["B15"].alignment = _align("right")
+    
+    ws.merge_cells("D15:J15")
+    ws["D15"].value = os.getenv("API_BASE_URL", "N/A")
+    ws["D15"].font = _font(size=9, color=C_REST)
+    
+    ws.merge_cells("B16:C16")
+    ws["B16"].value = "SOAP Base URL:"
+    ws["B16"].font = _font(bold=True, size=9, color="777777")
+    ws["B16"].alignment = _align("right")
+    
+    ws.merge_cells("D16:J16")
+    ws["D16"].value = os.getenv("SOAP_BASE_URL", "N/A")
+    ws["D16"].font = _font(size=9, color=C_SOAP)
+    _set_row_height(ws, 15, 18)
+    _set_row_height(ws, 16, 18)
+
+    # ── View All Results Hyperlink ──
+    ws.merge_cells("B18:R18")
+    link_cell = ws["B18"]
+    link_cell.value = "👉 CLICK HERE TO VIEW DETAILED TEST RESULTS"
+    link_cell.font = Font(bold=True, size=12, color="1565C0", underline="single")
+    link_cell.alignment = _align("center", "center")
+    link_cell.hyperlink = "#'Test Results'!A1"
+
+    # ── Top Failures Summary (if any) ──
+    failures = [r for r in results if r.get("pass_fail") in ["FAIL", "ERROR"]]
+    if failures:
+        start_row = 20
+        ws.merge_cells(f"B{start_row}:R{start_row}")
+        h = ws[f"B{start_row}"]
+        h.value = "⚠️  TOP FAILURES / ERRORS SUMMARY"
+        h.font = _font(bold=True, size=11, color=C_WHITE)
+        h.fill = _fill(C_FAIL_DARK)
+        h.alignment = _align("center", "center")
+        
+        headers = ["ID", "Type", "Method", "Endpoint", "Status Code"]
+        for i, head in enumerate(headers):
+            c = ws.cell(row=start_row + 1, column=2 + (i*2))
+            ws.merge_cells(start_row=start_row+1, start_column=2+(i*2), end_row=start_row+1, end_column=3+(i*2))
+            c.value = head
+            c.font = _font(bold=True, size=9)
+            c.fill = _fill(C_GREY_BG)
+            c.alignment = _align("center", "center")
+            c.border = _thin_border()
+
+        for idx, f in enumerate(failures[:5]): # Show top 5
+            row = start_row + 2 + idx
+            data = [f.get("testcaseid"), f.get("api_type"), f.get("method"), f.get("endpoint"), f.get("status_code")]
+            for i, val in enumerate(data):
+                c = ws.cell(row=row, column=2 + (i*2))
+                ws.merge_cells(start_row=row, start_column=2+(i*2), end_row=row, end_column=3+(i*2))
+                c.value = str(val)
+                c.font = _font(size=8)
+                c.alignment = _align("center", "center", wrap=(i==3))
+                c.border = _thin_border()
+            _set_row_height(ws, row, 25)
+
+    # ── Pie Chart ──
+    # We need a small table to drive the chart
+    # Putting it in column Z to keep it out of immediate view
+    ws["Z1"] = "Status"
+    ws["Z2"] = "Passed"
+    ws["Z3"] = "Failed"
+    ws["Z4"] = "Errors"
+    ws["AA1"] = "Count"
+    ws["AA2"] = passed
+    ws["AA3"] = failed
+    ws["AA4"] = errors
+
+    chart = PieChart()
+    labels = Reference(ws, min_col=26, min_row=2, max_row=4)
+    data = Reference(ws, min_col=27, min_row=1, max_row=4)
+    chart.add_data(data, titles_from_data=True)
+    chart.set_categories(labels)
+    chart.title = "Execution Distribution"
+    chart.style = 10
+    
+    # Custom colors for slices
+    from openpyxl.chart.series import SeriesLabel
+    from openpyxl.chart.marker import DataPoint
+    # slice 0: Passed
+    pt = DataPoint(idx=0)
+    pt.graphicalProperties.solidFill = "1A6B3C" # Green
+    chart.series[0].dPt.append(pt)
+    # slice 1: Failed
+    pt = DataPoint(idx=1)
+    pt.graphicalProperties.solidFill = "9B1C1C" # Red
+    chart.series[0].dPt.append(pt)
+    # slice 2: Errors
+    pt = DataPoint(idx=2)
+    pt.graphicalProperties.solidFill = "7B3F00" # Brown/Gold
+    chart.series[0].dPt.append(pt)
+
+    ws.add_chart(chart, "L5")
 
     # Column widths for dashboard
     for col, w in [(2,  14), (3, 2), (4, 10), (5, 2), (6, 14),
