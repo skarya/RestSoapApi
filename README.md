@@ -1,6 +1,6 @@
 # 🚀 API Automation Framework — REST & SOAP
 
-A Python-based API test automation framework that supports both **REST** and **SOAP** requests, with Excel/JSON input and a styled Excel report as output. Can be packaged as a standalone Windows `.exe`.
+A Python-based API test automation framework that supports both **REST** and **SOAP** requests, with Excel/JSON input and a styled Excel report as output. Can be packaged as a **standalone portable binary** — `.exe` on Windows, native binary on macOS and Linux.
 
 ---
 
@@ -46,8 +46,9 @@ RestSoapApi/
 │   └── output/                 # Generated reports (git-ignored)
 │
 ├── generate_excel_inputs.py    # Converts JSON suites → styled Excel files
-├── ApiAutomation.spec          # PyInstaller build spec
-├── build.bat                   # One-click EXE build script
+├── ApiAutomation.spec          # PyInstaller build spec (cross-platform)
+├── build.bat                   # Windows — builds ApiAutomation.exe
+├── build.sh                    # macOS / Linux — builds ApiAutomation binary
 ├── requirements.txt            # Python dependencies
 ├── .env.example                # Environment variable template
 └── README.md
@@ -67,12 +68,16 @@ cd RestSoapApi
 ```bash
 python -m venv .venv
 .venv\Scripts\activate        # Windows
+source .venv/bin/activate     # macOS / Linux
 pip install -r requirements.txt
 ```
 
 ### 3. Configure Environment Variables
 ```bash
+# Windows
 copy .env.example .env
+# macOS / Linux
+cp .env.example .env
 # Edit .env with your real API_BASE_URL, AUTH_TOKEN, SOAP_BASE_URL
 ```
 
@@ -101,17 +106,41 @@ Output report is saved to `data/output/report_<name>_<timestamp>.xlsx`.
 
 ---
 
-## 🔨 Build Standalone EXE (Windows)
+## 🔨 Build Portable Executable
 
-```bash
+### Windows → `ApiAutomation.exe`
+
+```bat
 build.bat
 ```
 
-The executable is generated at `dist/ApiAutomation.exe`.
+Output: `dist\ApiAutomation.exe`
+
+```bat
+dist\ApiAutomation.exe data\input\TestSuite_REST.json
+dist\ApiAutomation.exe data\input\TestSuite_SOAP.json --parallel
+dist\ApiAutomation.exe --rerun-failed
+```
+
+### macOS / Linux → `ApiAutomation`
 
 ```bash
-dist\ApiAutomation.exe data\input\TestSuite_REST.json --parallel
+chmod +x build.sh
+./build.sh
 ```
+
+Output: `dist/ApiAutomation`
+
+```bash
+./dist/ApiAutomation data/input/TestSuite_REST.json
+./dist/ApiAutomation data/input/TestSuite_SOAP.json --parallel
+./dist/ApiAutomation --rerun-failed
+```
+
+> **macOS note:** If macOS Gatekeeper blocks the binary, run:
+> ```bash
+> xattr -d com.apple.quarantine dist/ApiAutomation
+> ```
 
 ---
 
@@ -153,7 +182,7 @@ Use `{{VARIABLE_NAME}}` syntax in test cases to inject values.
 | `openpyxl` | Excel report generation |
 | `pandas` | Excel input parsing |
 | `python-dotenv` | `.env` file loading |
-| `pyinstaller` | EXE packaging |
+| `pyinstaller` | Portable binary packaging (Windows `.exe` / macOS binary) |
 
 ---
 

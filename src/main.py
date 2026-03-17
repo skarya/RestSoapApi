@@ -4,11 +4,22 @@ CLI entry point for the API Automation Framework.
 
 Usage:
     python src/main.py <input_file> [--parallel]
+    python src/main.py --rerun-failed
 
-Examples:
+Examples (Python):
     python src/main.py data/input/TestSuite_REST.json
     python src/main.py data/input/TestSuite_SOAP.xlsx --parallel
-    ApiAutomation.exe data\\input\\TestSuite_REST.xlsx --parallel
+    python src/main.py --rerun-failed
+
+Examples (Windows portable .exe):
+    ApiAutomation.exe data\\input\\TestSuite_REST.json
+    ApiAutomation.exe data\\input\\TestSuite_SOAP.json --parallel
+    ApiAutomation.exe --rerun-failed
+
+Examples (macOS / Linux portable binary):
+    ./ApiAutomation data/input/TestSuite_REST.json
+    ./ApiAutomation data/input/TestSuite_SOAP.json --parallel
+    ./ApiAutomation --rerun-failed
 """
 import argparse
 import os

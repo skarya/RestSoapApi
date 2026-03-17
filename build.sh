@@ -1,64 +1,88 @@
 #!/bin/bash
-# ============================================
+# ============================================================
 #   API Automation Framework - Build Script
-#   Supports: macOS and Linux
-# ============================================
+#   Platforms : macOS  →  dist/ApiAutomation   (portable binary)
+#               Linux  →  dist/ApiAutomation   (portable binary)
+# ============================================================
 
 set -e  # Exit on any error
 
-echo "============================================"
-echo "  API Automation Framework - Build"
-echo "  Platform: $(uname -s)"
-echo "============================================"
-echo
-
-# Detect platform
+# ── Detect platform ──────────────────────────────────────────
 PLATFORM=$(uname -s)
-if [[ "$PLATFORM" == "Darwin" ]]; then
-    EXT=""
+case "$PLATFORM" in
+  Darwin)
     PLATFORM_LABEL="macOS"
-elif [[ "$PLATFORM" == "Linux" ]]; then
     EXT=""
+    ;;
+  Linux)
     PLATFORM_LABEL="Linux"
-else
-    echo "Unsupported platform: $PLATFORM"
+    EXT=""
+    ;;
+  *)
+    echo "❌ Unsupported platform: $PLATFORM"
+    echo "   Use build.bat on Windows."
     exit 1
-fi
+    ;;
+esac
 
-# Clean previous builds
-echo "[1/3] Cleaning previous builds..."
+echo "============================================================"
+echo "  API Automation Framework - Build"
+echo "  Platform : $PLATFORM_LABEL"
+echo "============================================================"
+echo
+
+# ── [1/4] Clean previous builds ──────────────────────────────
+echo "[1/4] Cleaning previous builds..."
 rm -rf build/ dist/
-
-# Install dependencies
+echo "  Done."
 echo
-echo "[2/3] Installing dependencies..."
-pip install -r requirements.txt
 
-# Build with PyInstaller
+# ── [2/4] Install / upgrade dependencies ─────────────────────
+echo "[2/4] Installing dependencies..."
+pip install --upgrade pip --quiet
+pip install -r requirements.txt --quiet
+echo "  Done."
 echo
-echo "[3/3] Building standalone executable with PyInstaller..."
-pyinstaller --onefile \
+
+# ── [3/4] Build portable binary via PyInstaller spec ─────────
+echo "[3/4] Building portable binary with PyInstaller..."
+
+pyinstaller \
+  --clean \
+  --onefile \
   --name ApiAutomation \
   --add-data "data:data" \
   --hidden-import openpyxl \
   --hidden-import openpyxl.styles \
   --hidden-import openpyxl.utils \
+  --hidden-import openpyxl.styles.fills \
+  --hidden-import openpyxl.styles.alignment \
+  --hidden-import openpyxl.styles.borders \
   --hidden-import pandas \
   --hidden-import aiohttp \
+  --hidden-import aiohttp.connector \
+  --hidden-import aiohttp.client \
   --hidden-import dotenv \
+  $( [[ "$PLATFORM" == "Darwin" ]] && echo "--argv-emulation" ) \
   src/main.py
 
-# Copy data folder to dist
+echo "  Done."
 echo
-echo "Copying data folder to dist..."
-cp -r data dist/data
 
+# ── [4/4] Copy data folder next to the binary ─────────────────
+echo "[4/4] Copying data folder to dist/..."
+cp -r data dist/data
+echo "  Done."
 echo
-echo "============================================"
-echo "  BUILD COMPLETE!"
+
+# Make the binary executable
+chmod +x dist/ApiAutomation
+
+echo "============================================================"
+echo "  ✅ BUILD COMPLETE!"
 echo "  Platform   : $PLATFORM_LABEL"
 echo "  Executable : dist/ApiAutomation"
-echo "============================================"
+echo "============================================================"
 echo
 echo "Usage:"
 echo "  ./dist/ApiAutomation data/input/TestSuite_REST.json"
