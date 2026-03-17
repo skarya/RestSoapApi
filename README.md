@@ -58,21 +58,25 @@ RestSoapApi/
 
 ## ⚙️ Setup
 
-### 1. Clone the Repository
-```bash
-git clone https://github.com/your-username/RestSoapApi.git
-cd RestSoapApi
-```
+### 1. Create Virtual Environment & Install Dependencies
 
-### 2. Create Virtual Environment & Install Dependencies
-```bash
+**Windows:**
+```bat
 python -m venv .venv
-.venv\Scripts\activate        # Windows
-source .venv/bin/activate     # macOS / Linux
+.venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 3. Configure Environment Variables
+**macOS / Linux:**
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+> **Note:** `.venv` is not included in the repository. You must run `python3 -m venv .venv` on every fresh clone before activating.
+
+### 2. Configure Environment Variables
 ```bash
 # Windows
 copy .env.example .env
@@ -81,7 +85,7 @@ cp .env.example .env
 # Edit .env with your real API_BASE_URL, AUTH_TOKEN, SOAP_BASE_URL
 ```
 
-### 4. (Optional) Generate Excel Input Files
+### 3. (Optional) Generate Excel Input Files
 ```bash
 python generate_excel_inputs.py
 ```
