@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Playwright POM Architecture</title>
+<style>
+  :root {
+    --bg: #0d0f12;
+    --surface: #161a20;
+    --card: #1e2330;
+    --border: #2a3040;
+    --accent: #4f8ef7;
+    --accent2: #7c3aed;
+    --green: #22c55e;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --teal: #14b8a6;
+    --pink: #ec4899;
+    --text: #e2e8f0;
+    --muted: #8899aa;
+    --code-bg: #111418;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    --font-sans: 'Inter', system-ui, sans-serif;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: linear-gradient(135deg, #0d0f12 0%, #1a1f2e 50%, #0d0f12 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 32px 40px 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 60% 80% at 70% 50%, rgba(79,142,247,.07) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .header-grid {
+    max-width: 1280px; margin: 0 auto;
+    display: flex; align-items: center; gap: 20px;
+  }
+  .pw-logo {
+    width: 48px; height: 48px; border-radius: 12px;
+    background: linear-gradient(135deg, #2dd4bf, #4f8ef7);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; flex-shrink: 0;
+  }
+  .header h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.3px; }
+  .header p { color: var(--muted); font-size: 14px; margin-top: 4px; }
+  .badge-row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .badge {
+    font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px;
+    letter-spacing: 0.4px; text-transform: uppercase;
+  }
+  .badge-green { background: rgba(34,197,94,.15); color: #4ade80; border: 1px solid rgba(34,197,94,.25); }
+  .badge-blue  { background: rgba(79,142,247,.15); color: #93c5fd; border: 1px solid rgba(79,142,247,.25); }
+  .badge-purple{ background: rgba(124,58,237,.15); color: #c4b5fd; border: 1px solid rgba(124,58,237,.25); }
+  .badge-amber { background: rgba(245,158,11,.15); color: #fcd34d; border: 1px solid rgba(245,158,11,.25); }
+
+  /* ── Layout ── */
+  .layout {
+    max-width: 1280px; margin: 0 auto;
+    display: grid; grid-template-columns: 260px 1fr;
+    gap: 0; min-height: calc(100vh - 130px);
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 24px 0;
+    position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  }
+  .sidebar-section { padding: 0 16px 8px; }
+  .sidebar-label {
+    font-size: 10px; font-weight: 700; color: var(--muted);
+    letter-spacing: 1px; text-transform: uppercase;
+    padding: 12px 8px 6px;
+  }
+  .sidebar-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: var(--radius-sm);
+    cursor: pointer; font-size: 13px; color: var(--muted);
+    transition: all .15s; border: none; background: none;
+    width: 100%; text-align: left;
+  }
+  .sidebar-item:hover { background: rgba(255,255,255,.04); color: var(--text); }
+  .sidebar-item.active { background: rgba(79,142,247,.12); color: var(--accent); }
+  .sidebar-item .dot {
+    width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  }
+
+  /* ── Main content ── */
+  .main { padding: 32px 40px; }
+
+  /* ── Tabs ── */
+  .tabs { display: flex; gap: 4px; margin-bottom: 28px; border-bottom: 1px solid var(--border); padding-bottom: 0; }
+  .tab {
+    padding: 10px 18px; font-size: 13px; font-weight: 500;
+    color: var(--muted); cursor: pointer; border: none; background: none;
+    border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all .15s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── Panels ── */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ── Section heading ── */
+  .section-title {
+    font-size: 20px; font-weight: 700; margin-bottom: 6px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-sub { color: var(--muted); font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px; margin-bottom: 20px;
+  }
+  .card-title {
+    font-size: 14px; font-weight: 600; margin-bottom: 4px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-desc { font-size: 13px; color: var(--muted); margin-bottom: 16px; line-height: 1.6; }
+
+  /* ── Grid ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+
+  /* ── Code blocks ── */
+  .code-wrap {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); overflow: hidden; margin-top: 12px;
+  }
+  .code-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 14px; border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,.02);
+  }
+  .code-filename { font-size: 12px; color: var(--muted); font-family: var(--font-mono); }
+  .copy-btn {
+    font-size: 11px; color: var(--muted); background: none; border: none;
+    cursor: pointer; padding: 2px 8px; border-radius: 4px;
+    transition: all .15s;
+  }
+  .copy-btn:hover { background: rgba(255,255,255,.06); color: var(--text); }
+  pre {
+    padding: 16px 18px; overflow-x: auto; font-family: var(--font-mono);
+    font-size: 12.5px; line-height: 1.7; color: #cdd6f4;
+  }
+
+  /* ── Syntax tokens ── */
+  .kw  { color: #cba6f7; }
+  .fn  { color: #89b4fa; }
+  .str { color: #a6e3a1; }
+  .cm  { color: #6c7086; font-style: italic; }
+  .ty  { color: #fab387; }
+  .op  { color: #89dceb; }
+  .num { color: #f9e2af; }
+  .dec { color: #f38ba8; }
+  .prop{ color: #94e2d5; }
+  .imp { color: #cba6f7; }
+
+  /* ── Folder tree ── */
+  .tree { font-family: var(--font-mono); font-size: 13px; line-height: 2; padding: 16px; }
+  .tree-item { display: flex; align-items: center; gap: 6px; padding: 2px 0; cursor: pointer; border-radius: 4px; padding-left: 4px; }
+  .tree-item:hover { background: rgba(255,255,255,.04); }
+  .tree-item.selected { background: rgba(79,142,247,.1); color: var(--accent); }
+  .tree-indent-1 { padding-left: 20px; }
+  .tree-indent-2 { padding-left: 40px; }
+  .tree-indent-3 { padding-left: 60px; }
+  .tree-indent-4 { padding-left: 80px; }
+  .tree-icon { font-size: 14px; flex-shrink: 0; }
+  .file-type { font-size: 10px; padding: 1px 5px; border-radius: 3px; margin-left: auto; }
+  .ft-spec  { background: rgba(79,142,247,.2); color: #93c5fd; }
+  .ft-po    { background: rgba(34,197,94,.2); color: #4ade80; }
+  .ft-comp  { background: rgba(245,158,11,.2); color: #fcd34d; }
+  .ft-type  { background: rgba(124,58,237,.2); color: #c4b5fd; }
+  .ft-cfg   { background: rgba(20,184,166,.2); color: #5eead4; }
+
+  /* ── Flow diagram ── */
+  .flow { display: flex; align-items: center; gap: 0; margin: 20px 0; flex-wrap: wrap; }
+  .flow-node {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 12px 16px;
+    font-size: 13px; font-weight: 500; text-align: center; min-width: 120px;
+  }
+  .flow-arrow { color: var(--muted); padding: 0 8px; font-size: 18px; }
+  .fn-blue  { border-color: rgba(79,142,247,.4); color: #93c5fd; background: rgba(79,142,247,.08); }
+  .fn-green { border-color: rgba(34,197,94,.4);  color: #4ade80; background: rgba(34,197,94,.08); }
+  .fn-amber { border-color: rgba(245,158,11,.4); color: #fcd34d; background: rgba(245,158,11,.08); }
+  .fn-purple{ border-color: rgba(124,58,237,.4); color: #c4b5fd; background: rgba(124,58,237,.08); }
+  .fn-teal  { border-color: rgba(20,184,166,.4); color: #5eead4; background: rgba(20,184,166,.08); }
+
+  /* ── Principle pills ── */
+  .principles { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0; }
+  .pill {
+    padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    border: 1px solid;
+  }
+
+  /* ── Table ── */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 10px 14px; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+  td { padding: 10px 14px; border-bottom: 1px solid rgba(42,48,64,.6); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,.02); }
+
+  /* ── Tooltip ── */
+  .tooltip-wrap { position: relative; display: inline-block; }
+  .tooltip-wrap:hover .tooltip { display: block; }
+  .tooltip {
+    display: none; position: absolute; z-index: 10; bottom: 130%;
+    left: 50%; transform: translateX(-50%);
+    background: #2a3040; border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px 12px; font-size: 12px;
+    width: 220px; color: var(--text); pointer-events: none;
+  }
+
+  /* ── Scroll ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #2a3040; border-radius: 3px; }
+
+  /* ── Responsive ── */
+  @media(max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .main { padding: 20px; }
+  }
+
+  /* ── Helpers ── */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+  .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .tag { font-size: 11px; padding: 3px 8px; border-radius: 4px; font-family: var(--font-mono); background: rgba(255,255,255,.06); color: var(--muted); }
+  .highlight-box {
+    background: rgba(79,142,247,.07); border: 1px solid rgba(79,142,247,.2);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-sm); padding: 12px 16px;
+    font-size: 13px; margin: 16px 0; color: #b8cfff;
+  }
+  .warning-box {
+    background: rgba(245,158,11,.07); border: 1px solid rgba(245,158,11,.2);
+    border-left: 3px solid var(--amber);
+    border-radius: var(--radius-sm); padding: 12px 16px;
+    font-size: 13px; margin: 16px 0; color: #fcd34d;
+  }
+  .inline-code {
+    font-family: var(--font-mono); font-size: 12px;
+    background: rgba(255,255,255,.08); padding: 2px 6px; border-radius: 4px;
+    color: #fab387;
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-grid">
+    <div class="pw-logo">🎭</div>
+    <div>
+      <h1>Playwright · Page Object Model Architecture</h1>
+      <p>Refactoring reference — AI-generated specs → structured POM pattern</p>
+      <div class="badge-row">
+        <span class="badge badge-green">POM Pattern</span>
+        <span class="badge badge-blue">Playwright Fixtures</span>
+        <span class="badge badge-purple">TypeScript</span>
+        <span class="badge badge-amber">AI Planner Compatible</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- ── Sidebar ── -->
+  <nav class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Architecture</div>
+      <button class="sidebar-item active" onclick="switchTab('overview', this)">
+        <span class="dot" style="background:#4f8ef7"></span> Overview
+      </button>
+      <button class="sidebar-item" onclick="switchTab('structure', this)">
+        <span class="dot" style="background:#22c55e"></span> Folder Structure
+      </button>
+      <button class="sidebar-item" onclick="switchTab('fixtures', this)">
+        <span class="dot" style="background:#7c3aed"></span> Page Fixtures
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Page Objects</div>
+      <button class="sidebar-item" onclick="switchTab('base', this)">
+        <span class="dot" style="background:#f59e0b"></span> Base Page
+      </button>
+      <button class="sidebar-item" onclick="switchTab('pages', this)">
+        <span class="dot" style="background:#14b8a6"></span> Page Classes
+      </button>
+      <button class="sidebar-item" onclick="switchTab('components', this)">
+        <span class="dot" style="background:#ec4899"></span> Components
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Specs & Tests</div>
+      <button class="sidebar-item" onclick="switchTab('specs', this)">
+        <span class="dot" style="background:#f97316"></span> Spec Files
+      </button>
+      <button class="sidebar-item" onclick="switchTab('refactor', this)">
+        <span class="dot" style="background:#a78bfa"></span> Refactoring Guide
+      </button>
+      <button class="sidebar-item" onclick="switchTab('config', this)">
+        <span class="dot" style="background:#6b7280"></span> Config
+      </button>
+    </div>
+  </nav>
+
+  <!-- ── Main ── -->
+  <main class="main">
+
+    <!-- OVERVIEW -->
+    <div id="panel-overview" class="panel active">
+      <div class="section-title">🏗️ Architecture Overview</div>
+      <div class="section-sub">
+        Transform AI-generated flat spec files (logic + test combined) into a clean, maintainable Page Object Model.
+        The POM separates <strong>what</strong> to test (specs) from <strong>how</strong> to interact with the UI (page objects).
+      </div>
+
+      <div class="highlight-box">
+        💡 <strong>Goal:</strong> AI agents (Playwright's built-in planner, healer, generator) produce monolithic spec files.
+        This architecture provides the target structure for refactoring those into reusable page objects, fixtures, and clean specs.
+      </div>
+
+      <div class="flow">
+        <div class="flow-node fn-amber">🤖 AI Planner<br><small style="color:var(--muted);font-size:11px">generates spec</small></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node fn-blue">📄 Flat Spec<br><small style="color:var(--muted);font-size:11px">logic + selectors</small></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node fn-purple">🔄 Refactor<br><small style="color:var(--muted);font-size:11px">extract POM</small></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node fn-green">✅ Clean Spec<br><small style="color:var(--muted);font-size:11px">uses page objects</small></div>
+      </div>
+
+      <div class="grid-2" style="margin-top:24px">
+        <div class="card">
+          <div class="card-title">⚠️ Before: AI-Generated Flat Spec</div>
+          <div class="card-desc">Selectors, actions, assertions all inline. Hard to reuse or maintain.</div>
+          <div class="code-wrap">
+            <div class="code-header">
+              <span class="code-filename">login.spec.ts (AI-generated)</span>
+            </div>
+            <pre><span class="cm">// ❌ Flat: selectors + logic in spec</span>
+<span class="kw">test</span>(<span class="str">'user can login'</span>, <span class="kw">async</span> ({ page }) => {
+  <span class="kw">await</span> page.goto(<span class="str">'/login'</span>);
+  <span class="kw">await</span> page.fill(<span class="str">'#email'</span>, <span class="str">'user@test.com'</span>);
+  <span class="kw">await</span> page.fill(<span class="str">'#password'</span>, <span class="str">'secret'</span>);
+  <span class="kw">await</span> page.click(<span class="str">'[data-testid="submit"]'</span>);
+  <span class="kw">await</span> expect(page.locator(<span class="str">'.dashboard'</span>))
+    .toBeVisible();
+});</pre>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">✅ After: Clean POM Spec</div>
+          <div class="card-desc">Spec reads like plain English. Selectors live in the page object.</div>
+          <div class="code-wrap">
+            <div class="code-header">
+              <span class="code-filename">login.spec.ts (refactored)</span>
+            </div>
+            <pre><span class="cm">// ✅ Clean: uses fixture + page object</span>
+<span class="kw">test</span>(<span class="str">'user can login'</span>, <span class="kw">async</span> ({
+  loginPage, dashboardPage
+}) => {
+  <span class="kw">await</span> loginPage.goto();
+  <span class="kw">await</span> loginPage.loginAs(
+    <span class="str">'user@test.com'</span>, <span class="str">'secret'</span>
+  );
+  <span class="kw">await</span> dashboardPage.assertVisible();
+});</pre>
+          </div>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <div class="card-title" style="margin-bottom:12px">Core Principles</div>
+      <div class="principles">
+        <span class="pill" style="background:rgba(79,142,247,.1);color:#93c5fd;border-color:rgba(79,142,247,.3)">Single Responsibility</span>
+        <span class="pill" style="background:rgba(34,197,94,.1);color:#4ade80;border-color:rgba(34,197,94,.3)">DRY Selectors</span>
+        <span class="pill" style="background:rgba(124,58,237,.1);color:#c4b5fd;border-color:rgba(124,58,237,.3)">Fixture Composition</span>
+        <span class="pill" style="background:rgba(245,158,11,.1);color:#fcd34d;border-color:rgba(245,158,11,.3)">Readable Tests</span>
+        <span class="pill" style="background:rgba(20,184,166,.1);color:#5eead4;border-color:rgba(20,184,166,.3)">Type Safety</span>
+        <span class="pill" style="background:rgba(236,72,153,.1);color:#f9a8d4;border-color:rgba(236,72,153,.3)">Component Reuse</span>
+      </div>
+
+      <hr class="divider">
+
+      <table>
+        <thead><tr>
+          <th>Layer</th><th>Responsibility</th><th>File Pattern</th><th>Uses</th>
+        </tr></thead>
+        <tbody>
+          <tr><td>📋 <strong>Spec</strong></td><td>What to test — test cases &amp; assertions</td><td class="inline-code">*.spec.ts</td><td>Page fixtures</td></tr>
+          <tr><td>🔧 <strong>Fixture</strong></td><td>Instantiates page objects, shares context</td><td class="inline-code">fixtures.ts</td><td>Page classes</td></tr>
+          <tr><td>📄 <strong>Page Object</strong></td><td>Selectors + actions for a full page</td><td class="inline-code">*.page.ts</td><td>Base page, components</td></tr>
+          <tr><td>🧩 <strong>Component</strong></td><td>Reusable UI widget logic</td><td class="inline-code">*.component.ts</td><td>Base page</td></tr>
+          <tr><td>🏛️ <strong>Base Page</strong></td><td>Shared helpers, navigation, waits</td><td class="inline-code">base.page.ts</td><td>Playwright page</td></tr>
+          <tr><td>🗂️ <strong>Types</strong></td><td>Data interfaces, enums</td><td class="inline-code">types/</td><td>All layers</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- FOLDER STRUCTURE -->
+    <div id="panel-structure" class="panel">
+      <div class="section-title">📁 Folder Structure</div>
+      <div class="section-sub">Recommended directory layout for a Playwright POM project. Click any file to see its role and scaffold.</div>
+
+      <div class="grid-2">
+        <div class="card" style="padding:0">
+          <div class="code-header" style="border-radius:var(--radius) var(--radius) 0 0">
+            <span class="code-filename">📂 Project Root</span>
+          </div>
+          <div class="tree" id="tree">
+            <div class="tree-item" onclick="showFileInfo('root')"><span class="tree-icon">📁</span> e2e/</div>
+            <div class="tree-item tree-indent-1" onclick="showFileInfo('pages-dir')"><span class="tree-icon">📁</span> pages/ <span class="file-type ft-po">page objects</span></div>
+            <div class="tree-item tree-indent-2" onclick="showFileInfo('base-page')"><span class="tree-icon">📄</span> base.page.ts <span class="file-type ft-po">base</span></div>
+            <div class="tree-item tree-indent-2" onclick="showFileInfo('login-page')"><span class="tree-icon">📄</span> login.page.ts <span class="file-type ft-po">POM</span></div>
+            <div class="tree-item tree-indent-2" onclick="showFileInfo('dashboard-page')"><span class="tree-icon">📄</span> dashboard.page.ts <span class="file-type ft-po">POM</span></div>
+            <div class="tree-item tree-indent-2" onclick="showFileInfo('settings-page')"><span class="tree-icon">📄</span> settings.page.ts <span class="file-type ft-po">POM</span></div>
+            <div class="tree-item tree-indent-1" onclick="showFileInfo('components-dir')"><span class="tree-icon">📁</span> components/ <span class="file-type ft-comp">components</span></div>
+            <div class="tree-item tree-indent-2" onclick="showFileInfo('nav-component')"><span class="tree-icon">📄</span> nav.component.ts <span class="file-type ft-comp">comp</span></div>
+            <div class="tree-item tree-indent-2" onclick="showFileInfo('modal-component')"><span class="tree-icon">📄</span> modal.component.ts <span class="file-type ft-comp">comp</span></div>
+            <div class="tree-item tree-indent-2" onclick="showFileInfo('table-component')"><span class="tree-icon">📄</span> table.component.ts <span class="file-type ft-comp">comp</span></div>
+            <div class="tree-item tree-indent-2" onclick="showFileInfo('form-component')"><span class="tree-icon">📄</span> form.component.ts <span class="file-type ft-comp">comp</span></div>
+            <div class="tree-item tree-indent-1" onclick="showFileInfo('fixtures')"><span class="tree-icon">📄</span> fixtures.ts <span class="file-type ft-type">fixtures</span></div>
+            <div class="tree-item tree-indent-1" onclick="showFileInfo('specs-dir')"><span class="tree-icon">📁</span> specs/ <span class="file-type ft-spec">specs</span></div>
+            <div class="tree-item tree-indent-2" onclick="showFileInfo('login-spec')"><span class="tree-icon">📄</span> login.spec.ts <span class="file-type ft-spec">spec</span></div>
+            <div class="tree-item tree-indent-2" onclick="showFileInfo('dashboard-spec')"><span class="tree-icon">📄</span> dashboard.spec.ts <span class="file-type ft-spec">spec</span></div>
+            <div class="tree-item tree-indent-2" onclick="showFileInfo('settings-spec')"><span class="tree-icon">📄</span> settings.spec.ts <span class="file-type ft-spec">spec</span></div>
+            <div class="tree-item tree-indent-1" onclick="showFileInfo('types-dir')"><span class="tree-icon">📁</span> types/ <span class="file-type ft-type">types</span></div>
+            <div class="tree-item tree-indent-2" onclick="showFileInfo('user-types')"><span class="tree-icon">📄</span> user.types.ts <span class="file-type ft-type">types</span></div>
+            <div class="tree-item tree-indent-2" onclick="showFileInfo('page-types')"><span class="tree-icon">📄</span> pages.types.ts <span class="file-type ft-type">types</span></div>
+            <div class="tree-item tree-indent-1" onclick="showFileInfo('helpers-dir')"><span class="tree-icon">📁</span> helpers/ </div>
+            <div class="tree-item tree-indent-2" onclick="showFileInfo('test-data')"><span class="tree-icon">📄</span> test-data.ts</div>
+            <div class="tree-item tree-indent-2" onclick="showFileInfo('api-helpers')"><span class="tree-icon">📄</span> api.helpers.ts</div>
+            <div class="tree-item" onclick="showFileInfo('pw-config')"><span class="tree-icon">⚙️</span> playwright.config.ts <span class="file-type ft-cfg">config</span></div>
+            <div class="tree-item" onclick="showFileInfo('tsconfig')"><span class="tree-icon">⚙️</span> tsconfig.json <span class="file-type ft-cfg">config</span></div>
+          </div>
+        </div>
+
+        <div class="card" id="file-info-card">
+          <div class="card-title" id="file-info-title">👆 Click a file</div>
+          <div class="card-desc" id="file-info-desc">Select any file in the tree to see its role and purpose.</div>
+          <div id="file-info-code"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FIXTURES -->
+    <div id="panel-fixtures" class="panel">
+      <div class="section-title">🔧 Page Fixtures</div>
+      <div class="section-sub">
+        Fixtures are the backbone of POM in Playwright. They extend the base <span class="inline-code">test</span> object,
+        instantiate page objects, and inject them into every spec — eliminating boilerplate.
+      </div>
+
+      <div class="card">
+        <div class="card-title">fixtures.ts — The composition hub</div>
+        <div class="card-desc">One file that wires all page objects into Playwright's dependency injection system.</div>
+        <div class="code-wrap">
+          <div class="code-header">
+            <span class="code-filename">e2e/fixtures.ts</span>
+            <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          </div>
+          <pre><span class="kw">import</span> { <span class="ty">test</span> <span class="kw">as</span> base, <span class="ty">Page</span>, <span class="ty">BrowserContext</span> } <span class="kw">from</span> <span class="str">'@playwright/test'</span>;
+<span class="kw">import</span> { <span class="ty">LoginPage</span> }      <span class="kw">from</span> <span class="str">'./pages/login.page'</span>;
+<span class="kw">import</span> { <span class="ty">DashboardPage</span> } <span class="kw">from</span> <span class="str">'./pages/dashboard.page'</span>;
+<span class="kw">import</span> { <span class="ty">SettingsPage</span> }  <span class="kw">from</span> <span class="str">'./pages/settings.page'</span>;
+
+<span class="cm">// Declare fixture types for TypeScript autocompletion</span>
+<span class="kw">type</span> <span class="ty">PageFixtures</span> = {
+  loginPage:     <span class="ty">LoginPage</span>;
+  dashboardPage: <span class="ty">DashboardPage</span>;
+  settingsPage:  <span class="ty">SettingsPage</span>;
+  <span class="cm">// Add new page objects here ↓</span>
+};
+
+<span class="kw">export const</span> <span class="fn">test</span> = base.extend&lt;<span class="ty">PageFixtures</span>&gt;({
+
+  <span class="cm">// Each fixture receives `page` automatically from Playwright</span>
+  loginPage: <span class="kw">async</span> ({ page }, use) => {
+    <span class="kw">await</span> use(<span class="kw">new</span> <span class="ty">LoginPage</span>(page));
+  },
+
+  dashboardPage: <span class="kw">async</span> ({ page }, use) => {
+    <span class="kw">await</span> use(<span class="kw">new</span> <span class="ty">DashboardPage</span>(page));
+  },
+
+  settingsPage: <span class="kw">async</span> ({ page }, use) => {
+    <span class="kw">await</span> use(<span class="kw">new</span> <span class="ty">SettingsPage</span>(page));
+  },
+});
+
+<span class="cm">// Re-export expect so specs only import from one place</span>
+<span class="kw">export</span> { <span class="fn">expect</span> } <span class="kw">from</span> <span class="str">'@playwright/test'</span>;</pre>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">💡 How Fixtures Work</div>
+          <div class="card-desc">Playwright calls the setup function, passes the page object to <span class="inline-code">use()</span>, then tears down after the test.</div>
+          <div class="flow" style="flex-direction:column;align-items:flex-start;gap:8px">
+            <div class="flow-node fn-blue" style="width:100%">1. Test requests <code>loginPage</code> fixture</div>
+            <div style="padding-left:16px;color:var(--muted)">↓</div>
+            <div class="flow-node fn-purple" style="width:100%">2. Playwright calls fixture factory with <code>page</code></div>
+            <div style="padding-left:16px;color:var(--muted)">↓</div>
+            <div class="flow-node fn-teal" style="width:100%">3. Factory creates <code>new LoginPage(page)</code></div>
+            <div style="padding-left:16px;color:var(--muted)">↓</div>
+            <div class="flow-node fn-green" style="width:100%">4. Injected into test as <code>loginPage</code> param</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">🔗 Fixture Chaining</div>
+          <div class="card-desc">Fixtures can depend on other fixtures for authenticated states.</div>
+          <div class="code-wrap">
+            <div class="code-header"><span class="code-filename">Advanced: authenticated fixture</span></div>
+            <pre><span class="kw">type</span> <span class="ty">AuthFixtures</span> = {
+  authenticatedPage: <span class="ty">Page</span>;
+  adminDashboard:    <span class="ty">DashboardPage</span>;
+};
+
+authenticatedPage: <span class="kw">async</span> (
+  { browser }, use
+) => {
+  <span class="kw">const</span> ctx = <span class="kw">await</span> browser
+    .newContext({ storageState: <span class="str">'auth.json'</span> });
+  <span class="kw">const</span> page = <span class="kw">await</span> ctx.newPage();
+  <span class="kw">await</span> use(page);
+  <span class="kw">await</span> ctx.close();
+},
+
+adminDashboard: <span class="kw">async</span> (
+  { authenticatedPage }, use
+) => {
+  <span class="kw">await</span> use(<span class="kw">new</span> <span class="ty">DashboardPage</span>(
+    authenticatedPage
+  ));
+},</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BASE PAGE -->
+    <div id="panel-base" class="panel">
+      <div class="section-title">🏛️ Base Page Object</div>
+      <div class="section-sub">
+        All page objects extend BasePage. It provides shared utilities — navigation, loading waits,
+        error handling, and screenshot helpers — so every page object gets them for free.
+      </div>
+
+      <div class="card">
+        <div class="card-title">base.page.ts</div>
+        <div class="code-wrap">
+          <div class="code-header">
+            <span class="code-filename">e2e/pages/base.page.ts</span>
+            <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          </div>
+          <pre><span class="kw">import</span> { <span class="ty">Page</span>, <span class="ty">Locator</span>, <span class="ty">expect</span> } <span class="kw">from</span> <span class="str">'@playwright/test'</span>;
+
+<span class="kw">export abstract class</span> <span class="ty">BasePage</span> {
+  <span class="kw">readonly</span> page: <span class="ty">Page</span>;
+
+  <span class="kw">constructor</span>(page: <span class="ty">Page</span>) {
+    <span class="kw">this</span>.page = page;
+  }
+
+  <span class="cm">// ── Navigation ─────────────────────────────</span>
+
+  <span class="kw">abstract</span> <span class="fn">goto</span>(): <span class="ty">Promise</span>&lt;<span class="kw">void</span>&gt;;
+
+  <span class="kw">async</span> <span class="fn">waitForPageLoad</span>(): <span class="ty">Promise</span>&lt;<span class="kw">void</span>&gt; {
+    <span class="kw">await</span> <span class="kw">this</span>.page.waitForLoadState(<span class="str">'networkidle'</span>);
+  }
+
+  <span class="kw">async</span> <span class="fn">waitForURL</span>(url: <span class="ty">string</span> | <span class="ty">RegExp</span>): <span class="ty">Promise</span>&lt;<span class="kw">void</span>&gt; {
+    <span class="kw">await</span> <span class="kw">this</span>.page.waitForURL(url);
+  }
+
+  <span class="cm">// ── Assertions ──────────────────────────────</span>
+
+  <span class="kw">async</span> <span class="fn">assertVisible</span>(): <span class="ty">Promise</span>&lt;<span class="kw">void</span>&gt; {
+    <span class="kw">await</span> expect(<span class="kw">this</span>.<span class="fn">pageContainer</span>())
+      .toBeVisible({ timeout: <span class="num">10_000</span> });
+  }
+
+  <span class="cm">/** Override to return your page's root locator */</span>
+  <span class="kw">protected abstract</span> <span class="fn">pageContainer</span>(): <span class="ty">Locator</span>;
+
+  <span class="cm">// ── Helpers ─────────────────────────────────</span>
+
+  <span class="kw">async</span> <span class="fn">screenshot</span>(name: <span class="ty">string</span>): <span class="ty">Promise</span>&lt;<span class="kw">void</span>&gt; {
+    <span class="kw">await</span> <span class="kw">this</span>.page.screenshot({
+      path: <span class="str">`screenshots/<span class="op">${</span>name<span class="op">}</span>.png`</span>,
+      fullPage: <span class="kw">true</span>
+    });
+  }
+
+  <span class="kw">async</span> <span class="fn">clickAndWait</span>(
+    locator: <span class="ty">Locator</span>,
+    waitFor: <span class="ty">string</span> | <span class="ty">RegExp</span>
+  ): <span class="ty">Promise</span>&lt;<span class="kw">void</span>&gt; {
+    <span class="kw">await</span> <span class="ty">Promise</span>.all([
+      <span class="kw">this</span>.page.waitForURL(waitFor),
+      locator.click(),
+    ]);
+  }
+
+  <span class="kw">async</span> <span class="fn">fillAndTab</span>(
+    locator: <span class="ty">Locator</span>, value: <span class="ty">string</span>
+  ): <span class="ty">Promise</span>&lt;<span class="kw">void</span>&gt; {
+    <span class="kw">await</span> locator.fill(value);
+    <span class="kw">await</span> locator.press(<span class="str">'Tab'</span>);
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE CLASSES -->
+    <div id="panel-pages" class="panel">
+      <div class="section-title">📄 Page Object Classes</div>
+      <div class="section-sub">
+        Each page in your app gets one file. Selectors are defined as readonly locators, actions as async methods,
+        and assertions as <span class="inline-code">assert*</span> methods.
+      </div>
+
+      <div class="card">
+        <div class="card-title">login.page.ts — Full example</div>
+        <div class="code-wrap">
+          <div class="code-header">
+            <span class="code-filename">e2e/pages/login.page.ts</span>
+            <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          </div>
+          <pre><span class="kw">import</span> { <span class="ty">Page</span>, <span class="ty">Locator</span>, <span class="ty">expect</span> } <span class="kw">from</span> <span class="str">'@playwright/test'</span>;
+<span class="kw">import</span> { <span class="ty">BasePage</span> }  <span class="kw">from</span> <span class="str">'./base.page'</span>;
+<span class="kw">import</span> { <span class="ty">UserCredentials</span> } <span class="kw">from</span> <span class="str">'../types/user.types'</span>;
+
+<span class="kw">export class</span> <span class="ty">LoginPage</span> <span class="kw">extends</span> <span class="ty">BasePage</span> {
+
+  <span class="cm">// ── Selectors (readonly — never mutated) ────</span>
+  <span class="kw">readonly</span> emailInput:    <span class="ty">Locator</span>;
+  <span class="kw">readonly</span> passwordInput: <span class="ty">Locator</span>;
+  <span class="kw">readonly</span> submitButton:  <span class="ty">Locator</span>;
+  <span class="kw">readonly</span> errorMessage:  <span class="ty">Locator</span>;
+  <span class="kw">readonly</span> rememberMe:    <span class="ty">Locator</span>;
+  <span class="kw">readonly</span> forgotPassword:<span class="ty">Locator</span>;
+
+  <span class="kw">constructor</span>(page: <span class="ty">Page</span>) {
+    <span class="kw">super</span>(page);
+    <span class="cm">// Prefer data-testid &gt; role &gt; text &gt; CSS</span>
+    <span class="kw">this</span>.emailInput    = page.getByTestId(<span class="str">'email-input'</span>);
+    <span class="kw">this</span>.passwordInput = page.getByTestId(<span class="str">'password-input'</span>);
+    <span class="kw">this</span>.submitButton  = page.getByRole(<span class="str">'button'</span>, { name: <span class="str">'Sign in'</span> });
+    <span class="kw">this</span>.errorMessage  = page.getByRole(<span class="str">'alert'</span>);
+    <span class="kw">this</span>.rememberMe    = page.getByLabel(<span class="str">'Remember me'</span>);
+    <span class="kw">this</span>.forgotPassword= page.getByText(<span class="str">'Forgot password?'</span>);
+  }
+
+  <span class="cm">// ── Navigation ──────────────────────────────</span>
+  <span class="kw">async</span> <span class="fn">goto</span>(): <span class="ty">Promise</span>&lt;<span class="kw">void</span>&gt; {
+    <span class="kw">await</span> <span class="kw">this</span>.page.goto(<span class="str">'/login'</span>);
+    <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">waitForPageLoad</span>();
+  }
+
+  <span class="cm">// ── Actions ─────────────────────────────────</span>
+  <span class="kw">async</span> <span class="fn">loginAs</span>(
+    email: <span class="ty">string</span>, password: <span class="ty">string</span>
+  ): <span class="ty">Promise</span>&lt;<span class="kw">void</span>&gt; {
+    <span class="kw">await</span> <span class="kw">this</span>.emailInput.fill(email);
+    <span class="kw">await</span> <span class="kw">this</span>.passwordInput.fill(password);
+    <span class="kw">await</span> <span class="kw">this</span>.submitButton.click();
+  }
+
+  <span class="kw">async</span> <span class="fn">loginWithCredentials</span>(
+    creds: <span class="ty">UserCredentials</span>
+  ): <span class="ty">Promise</span>&lt;<span class="kw">void</span>&gt; {
+    <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">loginAs</span>(creds.email, creds.password);
+  }
+
+  <span class="cm">// ── Assertions ──────────────────────────────</span>
+  <span class="kw">async</span> <span class="fn">assertErrorMessage</span>(msg: <span class="ty">string</span>): <span class="ty">Promise</span>&lt;<span class="kw">void</span>&gt; {
+    <span class="kw">await</span> expect(<span class="kw">this</span>.errorMessage)
+      .toHaveText(msg);
+  }
+
+  <span class="kw">async</span> <span class="fn">assertLoginFormVisible</span>(): <span class="ty">Promise</span>&lt;<span class="kw">void</span>&gt; {
+    <span class="kw">await</span> expect(<span class="kw">this</span>.emailInput).toBeVisible();
+    <span class="kw">await</span> expect(<span class="kw">this</span>.passwordInput).toBeVisible();
+    <span class="kw">await</span> expect(<span class="kw">this</span>.submitButton).toBeVisible();
+  }
+
+  <span class="cm">// ── Required abstract impl ───────────────────</span>
+  <span class="kw">protected</span> <span class="fn">pageContainer</span>() {
+    <span class="kw">return</span> <span class="kw">this</span>.page.getByTestId(<span class="str">'login-page'</span>);
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- COMPONENTS -->
+    <div id="panel-components" class="panel">
+      <div class="section-title">🧩 Reusable Components</div>
+      <div class="section-sub">
+        Components model UI widgets that appear on multiple pages — navigation bars, modals, data tables, forms.
+        They receive a <span class="inline-code">Page</span> or a scoped <span class="inline-code">Locator</span> as their root.
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">nav.component.ts</div>
+          <div class="code-wrap">
+            <div class="code-header"><span class="code-filename">e2e/components/nav.component.ts</span></div>
+            <pre><span class="kw">import</span> { <span class="ty">Page</span>, <span class="ty">Locator</span> } <span class="kw">from</span> <span class="str">'@playwright/test'</span>;
+
+<span class="kw">export class</span> <span class="ty">NavComponent</span> {
+  <span class="kw">private readonly</span> root: <span class="ty">Locator</span>;
+
+  <span class="kw">constructor</span>(page: <span class="ty">Page</span>) {
+    <span class="kw">this</span>.root = page.getByRole(
+      <span class="str">'navigation'</span>
+    );
+  }
+
+  <span class="fn">link</span>(name: <span class="ty">string</span>) {
+    <span class="kw">return</span> <span class="kw">this</span>.root.getByRole(
+      <span class="str">'link'</span>, { name }
+    );
+  }
+
+  <span class="kw">async</span> <span class="fn">navigateTo</span>(name: <span class="ty">string</span>) {
+    <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">link</span>(name).click();
+  }
+
+  <span class="kw">async</span> <span class="fn">assertActiveLink</span>(name: <span class="ty">string</span>) {
+    <span class="kw">await</span> expect(<span class="kw">this</span>.<span class="fn">link</span>(name))
+      .toHaveAttribute(<span class="str">'aria-current'</span>, <span class="str">'page'</span>);
+  }
+}</pre>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">table.component.ts</div>
+          <div class="code-wrap">
+            <div class="code-header"><span class="code-filename">e2e/components/table.component.ts</span></div>
+            <pre><span class="kw">export class</span> <span class="ty">TableComponent</span> {
+  <span class="kw">constructor</span>(<span class="kw">private</span> root: <span class="ty">Locator</span>) {}
+
+  <span class="fn">row</span>(index: <span class="ty">number</span>) {
+    <span class="kw">return</span> <span class="kw">this</span>.root
+      .getByRole(<span class="str">'row'</span>)
+      .nth(index);
+  }
+
+  <span class="fn">cell</span>(row: <span class="ty">number</span>, col: <span class="ty">number</span>) {
+    <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">row</span>(row)
+      .getByRole(<span class="str">'cell'</span>)
+      .nth(col);
+  }
+
+  <span class="kw">async</span> <span class="fn">rowCount</span>(): <span class="ty">Promise</span>&lt;<span class="ty">number</span>&gt; {
+    <span class="kw">return</span> <span class="kw">this</span>.root
+      .getByRole(<span class="str">'row'</span>)
+      .count();
+  }
+
+  <span class="kw">async</span> <span class="fn">assertRowContains</span>(
+    row: <span class="ty">number</span>, text: <span class="ty">string</span>
+  ) {
+    <span class="kw">await</span> expect(<span class="kw">this</span>.<span class="fn">row</span>(row))
+      .toContainText(text);
+  }
+}</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Using components inside a page object</div>
+        <div class="code-wrap">
+          <div class="code-header"><span class="code-filename">e2e/pages/dashboard.page.ts (using components)</span></div>
+          <pre><span class="kw">import</span> { <span class="ty">NavComponent</span> }   <span class="kw">from</span> <span class="str">'../components/nav.component'</span>;
+<span class="kw">import</span> { <span class="ty">TableComponent</span> } <span class="kw">from</span> <span class="str">'../components/table.component'</span>;
+<span class="kw">import</span> { <span class="ty">ModalComponent</span> } <span class="kw">from</span> <span class="str">'../components/modal.component'</span>;
+
+<span class="kw">export class</span> <span class="ty">DashboardPage</span> <span class="kw">extends</span> <span class="ty">BasePage</span> {
+  <span class="kw">readonly</span> nav:       <span class="ty">NavComponent</span>;
+  <span class="kw">readonly</span> userTable: <span class="ty">TableComponent</span>;
+  <span class="kw">readonly</span> modal:     <span class="ty">ModalComponent</span>;
+
+  <span class="kw">constructor</span>(page: <span class="ty">Page</span>) {
+    <span class="kw">super</span>(page);
+    <span class="kw">this</span>.nav       = <span class="kw">new</span> <span class="ty">NavComponent</span>(page);
+    <span class="kw">this</span>.userTable = <span class="kw">new</span> <span class="ty">TableComponent</span>(
+      page.getByTestId(<span class="str">'user-table'</span>)
+    );
+    <span class="kw">this</span>.modal     = <span class="kw">new</span> <span class="ty">ModalComponent</span>(page);
+  }
+
+  <span class="kw">async</span> <span class="fn">goto</span>() {
+    <span class="kw">await</span> <span class="kw">this</span>.page.goto(<span class="str">'/dashboard'</span>);
+  }
+
+  <span class="kw">async</span> <span class="fn">openUserSettings</span>(username: <span class="ty">string</span>) {
+    <span class="kw">await</span> <span class="kw">this</span>.userTable.row(<span class="num">0</span>)
+      .getByRole(<span class="str">'button'</span>, { name: <span class="str">'Settings'</span> })
+      .click();
+    <span class="kw">await</span> <span class="kw">this</span>.modal.assertVisible();
+  }
+
+  <span class="kw">protected</span> <span class="fn">pageContainer</span>() {
+    <span class="kw">return</span> <span class="kw">this</span>.page.getByTestId(<span class="str">'dashboard-page'</span>);
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- SPECS -->
+    <div id="panel-specs" class="panel">
+      <div class="section-title">📋 Spec Files</div>
+      <div class="section-sub">
+        Specs import from <span class="inline-code">fixtures.ts</span> (not from <span class="inline-code">@playwright/test</span> directly).
+        They describe behaviour in plain English. No selectors, no raw <span class="inline-code">page.fill()</span>.
+      </div>
+
+      <div class="highlight-box">
+        📌 Always import <span class="inline-code">test</span> and <span class="inline-code">expect</span> from your <strong>fixtures.ts</strong>, not from <code>@playwright/test</code>.
+        This gives TypeScript knowledge of your custom fixtures.
+      </div>
+
+      <div class="card">
+        <div class="card-title">login.spec.ts — Complete example</div>
+        <div class="code-wrap">
+          <div class="code-header">
+            <span class="code-filename">e2e/specs/login.spec.ts</span>
+            <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          </div>
+          <pre><span class="cm">// ✅ Import from fixtures, not @playwright/test</span>
+<span class="kw">import</span> { test, expect } <span class="kw">from</span> <span class="str">'../fixtures'</span>;
+<span class="kw">import</span> { <span class="ty">TEST_USERS</span> }   <span class="kw">from</span> <span class="str">'../helpers/test-data'</span>;
+
+test.describe(<span class="str">'Login'</span>, () => {
+
+  test.beforeEach(<span class="kw">async</span> ({ loginPage }) => {
+    <span class="kw">await</span> loginPage.goto();
+  });
+
+  test(<span class="str">'should show login form on load'</span>,
+    <span class="kw">async</span> ({ loginPage }) => {
+      <span class="kw">await</span> loginPage.assertLoginFormVisible();
+  });
+
+  test(<span class="str">'successful login redirects to dashboard'</span>,
+    <span class="kw">async</span> ({ loginPage, dashboardPage }) => {
+      <span class="kw">await</span> loginPage.loginAs(
+        <span class="ty">TEST_USERS</span>.admin.email,
+        <span class="ty">TEST_USERS</span>.admin.password
+      );
+      <span class="kw">await</span> dashboardPage.assertVisible();
+  });
+
+  test(<span class="str">'invalid credentials show error'</span>,
+    <span class="kw">async</span> ({ loginPage }) => {
+      <span class="kw">await</span> loginPage.loginAs(
+        <span class="str">'wrong@email.com'</span>, <span class="str">'badpass'</span>
+      );
+      <span class="kw">await</span> loginPage.assertErrorMessage(
+        <span class="str">'Invalid email or password'</span>
+      );
+  });
+
+  test(<span class="str">'empty submit shows validation errors'</span>,
+    <span class="kw">async</span> ({ loginPage }) => {
+      <span class="kw">await</span> loginPage.submitButton.click();
+      <span class="kw">await</span> expect(
+        loginPage.emailInput
+      ).toHaveAttribute(<span class="str">'aria-invalid'</span>, <span class="str">'true'</span>);
+  });
+
+});</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- REFACTORING GUIDE -->
+    <div id="panel-refactor" class="panel">
+      <div class="section-title">🔄 Refactoring Guide</div>
+      <div class="section-sub">
+        Step-by-step process for converting AI-generated flat specs into POM. Follow this checklist
+        for every spec file the AI planner generates.
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="color:var(--amber)">⚡ Quick Refactoring Checklist</div>
+        <div id="checklist" style="margin-top:12px"></div>
+      </div>
+
+      <hr class="divider">
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Step 1 — Extract Selectors</div>
+          <div class="card-desc">Move every <span class="inline-code">page.locator()</span>, <span class="inline-code">page.fill()</span> selector into the page object constructor.</div>
+          <div class="code-wrap">
+            <div class="code-header"><span class="code-filename">Before → After</span></div>
+            <pre><span class="cm">// Before (in spec)</span>
+<span class="kw">await</span> page.fill(<span class="str">'#email'</span>, email);
+<span class="kw">await</span> page.click(<span class="str">'[data-testid="submit"]'</span>);
+
+<span class="cm">// After (in page object)</span>
+<span class="kw">this</span>.emailInput = page.getByTestId(<span class="str">'email'</span>);
+<span class="kw">this</span>.submitBtn  = page.getByRole(<span class="str">'button'</span>,
+  { name: <span class="str">'Submit'</span> });
+
+<span class="cm">// In spec</span>
+<span class="kw">await</span> loginPage.emailInput.fill(email);
+<span class="kw">await</span> loginPage.submitBtn.click();</pre>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Step 2 — Wrap Actions</div>
+          <div class="card-desc">Group multi-step interactions into named action methods on the page object.</div>
+          <div class="code-wrap">
+            <div class="code-header"><span class="code-filename">Before → After</span></div>
+            <pre><span class="cm">// Before (3 lines in spec)</span>
+<span class="kw">await</span> page.fill(<span class="str">'#email'</span>, <span class="str">'u@t.com'</span>);
+<span class="kw">await</span> page.fill(<span class="str">'#pw'</span>, <span class="str">'secret'</span>);
+<span class="kw">await</span> page.click(<span class="str">'button[type=submit]'</span>);
+
+<span class="cm">// After (1 line in spec)</span>
+<span class="kw">await</span> loginPage.loginAs(
+  <span class="str">'u@t.com'</span>, <span class="str">'secret'</span>
+);</pre>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Step 3 — Extract Assertions</div>
+          <div class="card-desc">Move <span class="inline-code">expect()</span> calls into named <span class="inline-code">assert*</span> methods on the page object.</div>
+          <div class="code-wrap">
+            <div class="code-header"><span class="code-filename">Before → After</span></div>
+            <pre><span class="cm">// Before</span>
+<span class="kw">await</span> expect(page.locator(<span class="str">'.error'</span>))
+  .toHaveText(<span class="str">'Invalid credentials'</span>);
+
+<span class="cm">// After — method on page object</span>
+<span class="kw">async</span> assertErrorMessage(msg: <span class="ty">string</span>) {
+  <span class="kw">await</span> expect(<span class="kw">this</span>.errorMessage)
+    .toHaveText(msg);
+}
+
+<span class="cm">// In spec</span>
+<span class="kw">await</span> loginPage.assertErrorMessage(
+  <span class="str">'Invalid credentials'</span>
+);</pre>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Step 4 — Update Imports</div>
+          <div class="card-desc">Change spec imports from <span class="inline-code">@playwright/test</span> to your <span class="inline-code">fixtures.ts</span>.</div>
+          <div class="code-wrap">
+            <div class="code-header"><span class="code-filename">Import change</span></div>
+            <pre><span class="cm">// ❌ Before (AI-generated)</span>
+<span class="kw">import</span> { test, expect }
+  <span class="kw">from</span> <span class="str">'@playwright/test'</span>;
+
+<span class="kw">const</span> page = ...; <span class="cm">// raw page fixture</span>
+
+<span class="cm">// ✅ After (POM)</span>
+<span class="kw">import</span> { test, expect }
+  <span class="kw">from</span> <span class="str">'../fixtures'</span>;
+
+<span class="cm">// loginPage injected automatically</span>
+test(<span class="str">'...'</span>, <span class="kw">async</span> ({ loginPage }) => {
+  ...
+});</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="warning-box">
+        ⚠️ <strong>AI Healer compatibility:</strong> When Playwright's AI healer auto-fixes broken selectors,
+        it rewrites them in the spec file. After refactoring, your selectors live in page objects —
+        ensure the healer's config points to your <span class="inline-code">pages/</span> directory so it patches them correctly.
+      </div>
+    </div>
+
+    <!-- CONFIG -->
+    <div id="panel-config" class="panel">
+      <div class="section-title">⚙️ Configuration</div>
+      <div class="section-sub">
+        Playwright config and TypeScript paths configured to support the POM folder structure.
+      </div>
+
+      <div class="card">
+        <div class="card-title">playwright.config.ts</div>
+        <div class="code-wrap">
+          <div class="code-header">
+            <span class="code-filename">playwright.config.ts</span>
+            <button class="copy-btn" onclick="copyCode(this)">copy</button>
+          </div>
+          <pre><span class="kw">import</span> { defineConfig, devices } <span class="kw">from</span> <span class="str">'@playwright/test'</span>;
+
+<span class="kw">export default</span> defineConfig({
+  testDir: <span class="str">'./e2e/specs'</span>,
+  fullyParallel: <span class="kw">true</span>,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? <span class="num">2</span> : <span class="num">0</span>,
+  workers: process.env.CI ? <span class="num">1</span> : <span class="kw">undefined</span>,
+
+  reporter: [
+    [<span class="str">'html'</span>, { outputFolder: <span class="str">'playwright-report'</span> }],
+    [<span class="str">'list'</span>],
+  ],
+
+  use: {
+    baseURL:       <span class="str">'http://localhost:3000'</span>,
+    trace:         <span class="str">'on-first-retry'</span>,
+    screenshot:    <span class="str">'only-on-failure'</span>,
+    video:         <span class="str">'on-first-retry'</span>,
+    actionTimeout: <span class="num">10_000</span>,
+  },
+
+  projects: [
+    {
+      name: <span class="str">'chromium'</span>,
+      use: { ...devices[<span class="str">'Desktop Chrome'</span>] },
+    },
+    {
+      name: <span class="str">'firefox'</span>,
+      use: { ...devices[<span class="str">'Desktop Firefox'</span>] },
+    },
+    {
+      name: <span class="str">'mobile-chrome'</span>,
+      use: { ...devices[<span class="str">'Pixel 5'</span>] },
+    },
+  ],
+});</pre>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">tsconfig.json — path aliases</div>
+        <div class="code-wrap">
+          <div class="code-header"><span class="code-filename">tsconfig.json</span></div>
+          <pre>{
+  <span class="prop">"compilerOptions"</span>: {
+    <span class="prop">"target"</span>: <span class="str">"ES2022"</span>,
+    <span class="prop">"module"</span>: <span class="str">"commonjs"</span>,
+    <span class="prop">"strict"</span>: <span class="kw">true</span>,
+    <span class="prop">"baseUrl"</span>: <span class="str">"."</span>,
+    <span class="prop">"paths"</span>: {
+      <span class="prop">"@pages/*"</span>:     [<span class="str">"e2e/pages/*"</span>],
+      <span class="prop">"@components/*"</span>:[<span class="str">"e2e/components/*"</span>],
+      <span class="prop">"@fixtures"</span>:    [<span class="str">"e2e/fixtures"</span>],
+      <span class="prop">"@helpers/*"</span>:   [<span class="str">"e2e/helpers/*"</span>],
+      <span class="prop">"@types/*"</span>:     [<span class="str">"e2e/types/*"</span>]
+    }
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ── Tab switching ──
+function switchTab(id, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+
+// ── File info for tree ──
+const fileData = {
+  'root':           { title: '📁 e2e/', desc: 'Root test directory. All Playwright tests, page objects, fixtures, and helpers live here.' },
+  'pages-dir':      { title: '📁 pages/', desc: 'One file per page in your app. Each exports a class extending BasePage.' },
+  'base-page':      { title: '📄 base.page.ts', desc: 'Abstract base class shared by all page objects. Contains navigation helpers, wait utilities, and screenshot helpers.', code: 'base' },
+  'login-page':     { title: '📄 login.page.ts', desc: 'Page object for /login. Defines selectors (email, password, submit) and actions (loginAs, loginWithCredentials).', code: 'login' },
+  'dashboard-page': { title: '📄 dashboard.page.ts', desc: 'Page object for /dashboard. Composes NavComponent and TableComponent as sub-objects.' },
+  'settings-page':  { title: '📄 settings.page.ts', desc: 'Page object for /settings. Includes form interactions and preference toggles.' },
+  'components-dir': { title: '📁 components/', desc: 'Reusable UI widgets used across multiple pages: NavComponent, ModalComponent, TableComponent, FormComponent.' },
+  'nav-component':  { title: '📄 nav.component.ts', desc: 'Models the navigation bar. Provides link(), navigateTo(), and assertActiveLink().' },
+  'modal-component':{ title: '📄 modal.component.ts', desc: 'Models dialog/modal overlays. Provides open(), close(), assertVisible(), getTitle().' },
+  'table-component':{ title: '📄 table.component.ts', desc: 'Models data tables. Receives a scoped Locator. Provides row(), cell(), rowCount(), sort().' },
+  'form-component': { title: '📄 form.component.ts', desc: 'Models form containers with validation. Provides fillField(), submit(), assertFieldError().' },
+  'fixtures':       { title: '📄 fixtures.ts', desc: 'The central fixture file. Extends Playwright\'s test object with all page objects. Every spec imports test/expect from here.' },
+  'specs-dir':      { title: '📁 specs/', desc: 'Test spec files. One per feature/page. Import from fixtures.ts, not @playwright/test.' },
+  'login-spec':     { title: '📄 login.spec.ts', desc: 'Tests for login flow: success, invalid creds, validation, remember me.' },
+  'dashboard-spec': { title: '📄 dashboard.spec.ts', desc: 'Tests for dashboard: content, table sorting, navigation, modals.' },
+  'settings-spec':  { title: '📄 settings.spec.ts', desc: 'Tests for settings page: profile update, notifications, password change.' },
+  'types-dir':      { title: '📁 types/', desc: 'TypeScript interfaces and types. Shared across page objects and specs.' },
+  'user-types':     { title: '📄 user.types.ts', desc: 'UserCredentials, UserRole, UserProfile interfaces used in test data and page objects.' },
+  'page-types':     { title: '📄 pages.types.ts', desc: 'Common page-level types: NavigationOptions, WaitOptions, AssertionOptions.' },
+  'helpers-dir':    { title: '📁 helpers/', desc: 'Utility functions: test data factories, API setup/teardown, random data generators.' },
+  'test-data':      { title: '📄 test-data.ts', desc: 'TEST_USERS, TEST_ITEMS constants. Fake data factories using @faker-js/faker.' },
+  'api-helpers':    { title: '📄 api.helpers.ts', desc: 'API client for seeding data before tests or cleaning up after. Uses Playwright\'s request fixture.' },
+  'pw-config':      { title: '⚙️ playwright.config.ts', desc: 'Playwright configuration: baseURL, reporters, project matrix (Chrome/Firefox/Mobile), retries, timeouts.' },
+  'tsconfig':       { title: '⚙️ tsconfig.json', desc: 'TypeScript config with path aliases: @pages/*, @components/*, @fixtures, @helpers/*, @types/*.' },
+};
+
+function showFileInfo(key) {
+  const data = fileData[key];
+  if (!data) return;
+  document.getElementById('file-info-title').textContent = data.title;
+  document.getElementById('file-info-desc').textContent = data.desc;
+  document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+}
+
+// ── Checklist ──
+const checks = [
+  'Identify all page.goto() calls → create goto() in page object',
+  'Extract every page.locator/fill/click selector into constructor',
+  'Wrap multi-step interactions into named action methods',
+  'Move expect() calls into assert* methods on page object',
+  'Create the page class extending BasePage',
+  'Register page object in fixtures.ts',
+  'Update spec import: @playwright/test → ../fixtures',
+  'Replace raw page fixture param with typed page object param',
+  'Run tests to verify refactoring is correct',
+  'Delete old AI-generated flat spec',
+];
+const cl = document.getElementById('checklist');
+checks.forEach((text, i) => {
+  const row = document.createElement('label');
+  row.style.cssText = 'display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid rgba(42,48,64,.5);cursor:pointer;font-size:13px;';
+  row.innerHTML = `<input type="checkbox" style="margin-top:2px;accent-color:#4f8ef7;flex-shrink:0">
+    <span id="cl-${i}">${text}</span>`;
+  row.querySelector('input').addEventListener('change', function() {
+    document.getElementById('cl-' + i).style.textDecoration = this.checked ? 'line-through' : '';
+    document.getElementById('cl-' + i).style.color = this.checked ? 'var(--muted)' : '';
+  });
+  cl.appendChild(row);
+});
+
+// ── Copy code ──
+function copyCode(btn) {
+  const pre = btn.closest('.code-wrap').querySelector('pre');
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = 'copied!';
+    btn.style.color = '#4ade80';
+    setTimeout(() => { btn.textContent = 'copy'; btn.style.color = ''; }, 1500);
+  });
+}
+</script>
+</body>
+</html>
